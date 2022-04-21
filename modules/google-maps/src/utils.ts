@@ -1,5 +1,5 @@
 /* global google, document */
-import {assert, Deck} from '@deck.gl/core';
+import {Deck} from '@deck.gl/core';
 import {Matrix4, Vector2} from '@math.gl/core';
 
 // https://en.wikipedia.org/wiki/Web_Mercator_projection#Formulas
@@ -116,7 +116,6 @@ export function getViewPropsFromOverlay(map: google.maps.Map, overlay: google.ma
   const sw = bounds.getSouthWest();
   const topRight = projection.fromLatLngToDivPixel(ne);
   const bottomLeft = projection.fromLatLngToDivPixel(sw);
-  assert(topRight && bottomLeft);
 
   // google maps places overlays in a container anchored at the map center.
   // the container CSS is manipulated during dragging.
@@ -124,7 +123,11 @@ export function getViewPropsFromOverlay(map: google.maps.Map, overlay: google.ma
   const nwContainerPx = new google.maps.Point(0, 0);
   const nw = projection.fromContainerPixelToLatLng(nwContainerPx);
   const nwDivPx = projection.fromLatLngToDivPixel(nw);
-  assert(nwDivPx);
+
+  if (!topRight || !bottomLeft || !nwDivPx) {
+    return {width, height, left: 0, top: 0};
+  }
+
   let leftOffset = nwDivPx.x;
   let topOffset = nwDivPx.y;
 
@@ -145,8 +148,7 @@ export function getViewPropsFromOverlay(map: google.maps.Map, overlay: google.ma
   if (Math.abs(latitude) > MAX_LATITUDE) {
     latitude = latitude > 0 ? MAX_LATITUDE : -MAX_LATITUDE;
     const center = new google.maps.LatLng(latitude, longitude);
-    const centerPx = projection.fromLatLngToContainerPixel(center);
-    assert(centerPx);
+    const centerPx = projection.fromLatLngToContainerPixel(center)!;
     topOffset += centerPx.y - height / 2;
   }
 
@@ -243,10 +245,9 @@ function getMapSize(map: google.maps.Map): {width: number; height: number} {
   // The map fills the container div unless it's in fullscreen mode
   // at which point the first child of the container is promoted
   const container = map.getDiv().firstChild as HTMLElement | null;
-  assert(container);
   return {
-    width: container.offsetWidth,
-    height: container.offsetHeight
+    width: container!.offsetWidth,
+    height: container!.offsetHeight
   };
 }
 
@@ -256,8 +257,7 @@ function pixelToLngLat(
   y: number
 ): [longitude: number, latitude: number] {
   const point = new google.maps.Point(x, y);
-  const latLng = projection.fromContainerPixelToLatLng(point);
-  assert(latLng, 'pixel outside of map');
+  const latLng = projection.fromContainerPixelToLatLng(point)!;
   return [latLng.lng(), latLng.lat()];
 }
 
